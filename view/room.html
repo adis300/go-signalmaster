@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Snap Engage</title>
+    <meta name="viewport" content="width=device-width">
+    <!-- Place favicon.ico and apple-touch-icon.png in the root directory -->
+    <script src="public/js/jquery-2.1.4.min.js"></script>
+    <script src="public/js/rtckit.js"></script>
+    <style>
+        .videoContainer {
+            position: absolute;
+            width: 30%;
+            max-width: 35%;
+            z-index: 10;
+        }
+        .videoContainer video {
+            width: 100%;
+            height: 100%;
+            z-index: 11;
+        }
+        .remoteVideoContainer{
+            display: inline-block;
+            max-width: 100%;
+            max-height: 100%;
+            z-index: 0;
+        }
+        .remoteVideoContainer video {
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        .control{
+            position: sticky;
+            z-index: 20;
+            z-index: 21;
+        }
+    </style>
+</head>
+<body>
+    <div id="localVideoContainer" class="videoContainer">
+        <video id="localVideo"></video>
+        <button id="muteButton" class="control" onclick="mute()">Mute</button>
+        <button id="pauseButton" class="control" onclick="pause()">Pause</button>
+    </div>
+    <div id="remoteVideos"></div>
+</body>
+
+<script>
+
+function mute() {
+    muted = !muted;
+    console.log(muted);
+    if(muted){
+        document.getElementById("muteButton").innerHTML = "Unmute";
+        webrtc.mute();
+    }else{
+        document.getElementById("muteButton").innerHTML = "Mute";
+        webrtc.unmute();
+    }
+}
+
+function pause(){
+    paused = !paused;
+    console.log(paused);
+    if(paused){
+        document.getElementById("pauseButton").innerHTML = "Resume";
+        webrtc.pauseVideo();
+    }else{
+        document.getElementById("pauseButton").innerHTML = "Pause";
+        webrtc.resumeVideo();
+    }
+}
+    var muted, paused = false;
+    var videoCount = 0;
+    console.log(document.location.host);
+    var room = document.location.pathname.substring(1);
+    var webrtc = new SimpleWebRTC({
+        localVideoEl: 'localVideo',
+        remoteVideosEl: 'remotes',
+        autoRequestMedia: true,
+        url: 'http://' + document.location.host,
+        wsUrl: 'ws://' + document.location.host,
+    }, room);
+
+    // a peer video has been added
+    webrtc.on('videoAdded', function (video, peer) {
+        videoCount += 1;
+        console.log('video added', peer);
+        var remotes = document.getElementById("remoteVideos");
+        if (remotes) {
+            var container = document.createElement('div');
+            container.className = 'remoteVideoContainer';
+            container.id = 'container_' + webrtc.getDomId(peer);
+            container.appendChild(video);
+            // suppress contextmenu
+            video.oncontextmenu = function () { return false; };
+            remotes.appendChild(container);
+        }
+    });
+
+    webrtc.on('videoRemoved', function (video, peer) {
+        console.log('video removed ', peer);
+        var remotes = document.getElementById("remoteVideos");
+        var el = document.getElementById(peer ? 'container_' + webrtc.getDomId(peer) : 'localVideoContainer');
+        if (remotes && el && peer) {
+            videoCount -= 1;
+            remotes.removeChild(el);
+        }
+    });
+
+    webrtc.on('readyToCall', function () {
+        console.log("call is ready");
+        webrtc.joinRoom(room);
+    });
+
+
+</script>
+
+</html>
